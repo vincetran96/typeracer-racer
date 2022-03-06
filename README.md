@@ -1,0 +1,1 @@
+https://medium.com/hackernoon/how-to-mess-with-typeracer-34c650b863f6
