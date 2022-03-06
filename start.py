@@ -23,21 +23,20 @@ def random_chunk(st: str, min_chunk=1, max_chunk=8):
             break
 
 
+TYPERACER = "https://play.typeracer.com/"
 MAX_CHUNK_WAITTIME = 0.25
-WPM = 150 # Desired words per minute
+WPM = 200 # Desired words per minute
 SPW = 60 / WPM # Seconds per word
-CHAR_INPUT_TIME = 0.03 # Time it takes to input a char in seconds
-CHRPM = WPM * 5 # Assuming each word on average has 5 chars, this is chars per minute
+DEFAULT_CHAR_INPUT_TIME = 0.03 # Time it takes to input a char in seconds
 
 chromedriver_location = "./chromedrivers/chromedriver_mac64"
 chrome_options = Options()
-# chrome_options.add_argument("--headless")
 chrome_options.add_argument("--remote-debugging-port=9222")
 driver = webdriver.Chrome(executable_path=chromedriver_location, options=chrome_options)
-TYPERACER = "https://play.typeracer.com/"
 driver.get(TYPERACER)
 
 while True:
+    time.sleep(0.01)
     try:
         race_btn_xpath = '//*[@id="gwt-uid-1"]/a'
         # race_btn_xpath = "(//div[@class='mainMenu']/table/descendant::tr)[2]/descendant::*[@class='gwt-Anchor']"
@@ -52,7 +51,9 @@ while True:
         input_panel_xpath = "//div[@class='mainViewport']/descendant::table[@class='inputPanel']"
         spans_xpath = "/descendant::span"
         spans = driver.find_elements_by_xpath(input_panel_xpath + spans_xpath)
-        text = spans[0].text.strip() + spans[1].text.strip() + " " + spans[2].text.strip()
+        text = spans[0].text.strip() + spans[1].text.strip()
+        if len(spans) == 3:
+           text = text + " " + spans[2].text.strip()
         print(f"Text:\n{text}\n")
         
         # Need a dynamic way to calculate wait time between words
@@ -63,17 +64,17 @@ while True:
 
         # Inputing a char can even take some time, so now we have to subtract that time from the total_time to calculate the wait time between chars
         char_wait_time = \
-            (total_time - num_chars * CHAR_INPUT_TIME) / (num_chars - 1) # In seconds
+            (total_time - num_chars * DEFAULT_CHAR_INPUT_TIME) / (num_chars - 1) # In seconds
         print(f"Number of words in text: {num_words}")
         print(f"Target words per minute: {WPM}")
         print(f"Estimated complete time in seconds: {total_time}")
         print(f"Number of chars in text: {num_chars}")
-        print(f"Char wait time: {char_wait_time}")
+        print(f"Estimated char wait time: {char_wait_time}")
         break
     except Exception as exc:
         print(f"CAN'T FIND INPUT PANEL WITH EXCEPTION:\n{exc}\n")
 
-# start = 0 # Typing start timestamp
+time.sleep(11) # Wait for countdown
 c_total_time = 0 # Total time spent on inputing characters (in seconds)
 total_time_remaining = total_time # Total time remaining from this point (in seconds)
 while True:
@@ -97,26 +98,28 @@ while True:
             c_time = c_end - c_start
             c_total_time += c_time # add time to total char time
             print(f"{c} took {c_time} seconds")
+            total_time_remaining -= c_time
             
             # Calculate the total time remaining
             # and number of chars remaining so we can re-calculate the char wait time
-            if idx < num_chars - 1:
-                total_time_remaining -= c_time
+            if idx < num_chars - 2:
                 num_chars_remaining = len(text[idx+1:])
-                char_wait_time = \
-                    (total_time_remaining - num_chars_remaining * c_time) / \
-                        (num_chars_remaining - 1)
+                a = max(total_time_remaining - num_chars_remaining * c_time, 0)
+                b = (num_chars_remaining - 1)
+                char_wait_time = a / b
+                
+                print(f"Total time remaining: {total_time_remaining}")
+                print(f"Num chars remaining: {num_chars_remaining}")
+                print(f"New char wait time: {char_wait_time}")
             
-            print(f"New char wait time: {char_wait_time}")
             time.sleep(char_wait_time)
-            
             total_time_remaining -= char_wait_time
         break
     except Exception as exc:
-        # print(exc)
-        pass
+        print(f"CAN'T TYPE WITH EXCEPTION:\n{exc}")
+        # raise (exc)
 end = time.time() # Typing end timestamp
 
-print(f"Actual elapsed time in seconds: {end - start}")
+print(f"\nActual elapsed time in seconds: {end - start}")
 print(f"Total time spent on inputing chars in seconds: {c_total_time}")
 print(f"Original estimated complete time in seconds: {total_time}")
