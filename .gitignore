@@ -1,2 +1,5 @@
 .vscode/
+chromedrivers/
+env/
+drivers/*
 .DS_Store

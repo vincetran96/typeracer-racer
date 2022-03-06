@@ -1,8 +1,11 @@
 import time
 from itertools import islice
 from random import randint, uniform
+import argparse
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 
 
 def random_chunk(st: str, min_chunk=1, max_chunk=8):
@@ -23,16 +26,42 @@ def random_chunk(st: str, min_chunk=1, max_chunk=8):
             break
 
 
+# Create the arg parser
+arg_parser = argparse.ArgumentParser(
+    prog="python start.py",
+    description="Start TypeRacer Racer"
+)
+
+# Add the arguments
+arg_parser.add_argument(
+    'wpm',
+    metavar='wpm',
+    type=int,
+    help="Desired words per minute"
+)
+
+arg_parser.add_argument(
+    'chromedriver',
+    metavar='chromedriver',
+    type=str,
+    help="Location of the chromedriver (e.g., ./drivers/chromedriver)"
+)
+
+# Execute the parse_args() method
+args = arg_parser.parse_args()
+WPM = args.wpm
+CHROMEDRIVER_PATH = args.chromedriver
+
 TYPERACER = "https://play.typeracer.com/"
 MAX_CHUNK_WAITTIME = 0.25
-WPM = 200 # Desired words per minute
 SPW = 60 / WPM # Seconds per word
 DEFAULT_CHAR_INPUT_TIME = 0.03 # Time it takes to input a char in seconds
 
-chromedriver_location = "./chromedrivers/chromedriver_mac64"
+# Chrome things
+chrome_service = Service(executable_path=CHROMEDRIVER_PATH)
 chrome_options = Options()
 chrome_options.add_argument("--remote-debugging-port=9222")
-driver = webdriver.Chrome(executable_path=chromedriver_location, options=chrome_options)
+driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
 driver.get(TYPERACER)
 
 while True:
@@ -40,7 +69,7 @@ while True:
     try:
         race_btn_xpath = '//*[@id="gwt-uid-1"]/a'
         # race_btn_xpath = "(//div[@class='mainMenu']/table/descendant::tr)[2]/descendant::*[@class='gwt-Anchor']"
-        driver.find_element_by_xpath(race_btn_xpath).click()
+        driver.find_element(by=By.XPATH, value=race_btn_xpath).click()
         break
     except:
         print("CAN'T FIND RACE BUTTON\n")
@@ -50,10 +79,14 @@ while True:
     try:
         input_panel_xpath = "//div[@class='mainViewport']/descendant::table[@class='inputPanel']"
         spans_xpath = "/descendant::span"
-        spans = driver.find_elements_by_xpath(input_panel_xpath + spans_xpath)
-        text = spans[0].text.strip() + spans[1].text.strip()
+        spans = driver.find_elements(by=By.XPATH, value=input_panel_xpath + spans_xpath)
+        s0, s1 = spans[0].text, spans[1].text
+        print("===" + s0 + "===")
+        print("===" + s1 + "===")
+        if len(spans) == 2:
+            text = s0.strip() + " " + s1.rstrip()
         if len(spans) == 3:
-           text = text + " " + spans[2].text.strip()
+           text = s0.strip() + s1.rstrip() + " " + spans[2].text.strip()
         print(f"Text:\n{text}\n")
         
         # Need a dynamic way to calculate wait time between words
@@ -116,7 +149,7 @@ while True:
             total_time_remaining -= char_wait_time
         break
     except Exception as exc:
-        print(f"CAN'T TYPE WITH EXCEPTION:\n{exc}")
+        print(f"CAN'T TYPE WITH EXCEPTION:")
         # raise (exc)
 end = time.time() # Typing end timestamp
 
